@@ -144,6 +144,7 @@ class HashPallette():
             if len(n) > len(longest_name):
                 longest_name = n
         ((w, th), baseline) = cv2.getTextSize(longest_name, font_face, font_scale, thickness)
+        
         v_spacing = int(th + baseline)
         h_spacing = int(w + 70)
         single_col_height = (v_spacing * (len(display_names) + 2))
