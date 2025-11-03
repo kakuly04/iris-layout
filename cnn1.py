@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import iris_dataset
-import cifar
+#import cifar
 
 # Dataset generation notes
 #  For any brand new block, you need to extract an idealized PNG of the layout from design

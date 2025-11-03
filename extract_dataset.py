@@ -66,11 +66,9 @@ def find_rotation_and_scale(image1, image2):
 
 def correct_rotation_and_scale(image, rotation_angle, scale_factor):
     center = (image.shape[1] // 2, image.shape[0] // 2)
-
     # Correct for rotation
     rotation_matrix = cv2.getRotationMatrix2D(center, rotation_angle, 1)
     rotated_image = cv2.warpAffine(image, rotation_matrix, (image.shape[1], image.shape[0]))
-
     # Correct for scale
     corrected_image = cv2.resize(rotated_image, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_LINEAR)
 
@@ -82,6 +80,14 @@ def snap_to_max(img, max_dim):
     offset_y = (snap.shape[0] - img.shape[0]) // 2
     snap[offset_y:offset_y + img.shape[0], offset_x:offset_x+img.shape[1]] = img
     return snap
+
+def snap_to_max_rgb(img, max_dim):
+    snap = np.zeros((max_dim, max_dim, 3), np.uint8)
+    offset_x = (snap.shape[1] - img.shape[1]) // 2
+    offset_y = (snap.shape[0] - img.shape[0]) // 2
+    snap[offset_y:offset_y + img.shape[0], offset_x:offset_x+img.shape[1], :] = img
+    return snap
+
 
 def map_name_to_celltype(cell_name):
     cell_name = cell_name.lower()
@@ -132,9 +138,6 @@ if __name__ == "__main__":
         "--loglevel", required=False, help="set logging level (INFO/DEBUG/WARNING/ERROR)", type=str, default="INFO",
     )
     parser.add_argument(
-        "--names", required=True, nargs='+', help="List of base names of file series",
-    )
-    parser.add_argument(
         "--psi90", action="store_true", help="Look for 90 degree rotated versions of blocks"
     )
     parser.add_argument(
@@ -143,14 +146,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "--tech", required=False, help="Tech library", choices=['sky130'], default='sky130'
     )
-
+    
     args = parser.parse_args()
     numeric_level = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(numeric_level, int):
         raise ValueError('Invalid log level: %s' % args.loglevel)
     logging.basicConfig(level=numeric_level)
 
-    names = args.names
+    names = ["wb_bridge_2way", "wrapped_etpu", "sky130_sram_1kbyte_1rw1r_32x256_8", "wb_openram_wrapper", "wrapped_function_generator", "wrapped_ibnalhaytham", "wrapped_mbsFSK", "wrapped_silife", "wrapped_snn_network", "housekeeping"]
+    #names = args.names
+    #names = ["wb_openram_wrapper"]
+
     layer = args.layer
     tech = args.tech
 
@@ -161,10 +167,12 @@ if __name__ == "__main__":
 
     for psi in try_angles:
         for name in names:
+            print(f"Processing {name} layer {layer} angle {psi}")
             # Load two images (they should be grayscale for simplicity)
             try:
-                gds_png = cv2.imread(f"imaging/{name}-{layer}.png", cv2.IMREAD_GRAYSCALE)
-                image = cv2.imread(f"imaging/{name}" + psi + ".png", cv2.IMREAD_GRAYSCALE)
+                gds_png = cv2.imread(f"imaging/{name}_{layer}.png", cv2.IMREAD_GRAYSCALE)
+                image = cv2.imread(f"cropped_image/{name}_psi.png", cv2.IMREAD_GRAYSCALE)
+                gds_label_image = cv2.imread(f"imaging/{name}_{layer}_label.png", cv2.IMREAD_UNCHANGED)
 
                 if '_psi90' in psi:
                     gds_png = 255 - gds_png
@@ -179,30 +187,68 @@ if __name__ == "__main__":
             max_dim = max(max(gds_png.shape), max(image.shape))
             gds_png_snap = snap_to_max(gds_png, max_dim)
             image_snap = snap_to_max(image, max_dim)
+            gds_label_image_snap = snap_to_max_rgb(gds_label_image, max_dim)
 
+            #cv2.imshow("GDS Snap", gds_png_snap)
+            #cv2.waitKey(0)
+            #cv2.destroyAllWindows()
+
+            #cv2.imshow("Image Snap", image_snap) 
+            #cv2.waitKey(0)
+            #cv2.destroyAllWindows()
+    
             # Find rotation and scale difference
+            
             rotation_angle, scale_factor = find_rotation_and_scale(gds_png_snap, image_snap)
             print(f"Rotation angle: {rotation_angle}, Scale factor: {scale_factor}")
 
             # Correct img2 for rotation and scale
-            corrected_image = correct_rotation_and_scale(image_snap, -rotation_angle + 180, 1/scale_factor)
+            corrected_image = correct_rotation_and_scale(image_snap, -90, 1/scale_factor)
+            corrected_gds = correct_rotation_and_scale(gds_png_snap, 0, 1/scale_factor)
+            corrected_gds_label = correct_rotation_and_scale(gds_label_image_snap, 0, 1/scale_factor)
 
             # now template match the reference onto the image so we can determine the offset
             corr = cv2.matchTemplate(corrected_image, gds_png, cv2.TM_CCOEFF)
             _min_val, _max_val, _min_loc, max_loc = cv2.minMaxLoc(corr)
             # create the composite
+            '''print("Corrected Image Shape:", corrected_image.shape)
+            print("GDS PNG Shape:", gds_png.shape)
+            print("GDS PNG Snap Shape:", gds_png_snap.shape)
+            print("Image Shape:", image.shape)
+            print("Image Snap Shape:", image_snap.shape)
+            print("Max Location:", max_loc)'''
+
+            cv2.imwrite(f'imaging/{name}_{layer}_corrected.png', corrected_image)
+            
             composite_overlay = np.zeros(corrected_image.shape, np.uint8)
-            composite_overlay[max_loc[1]:max_loc[1] + gds_png.shape[0], max_loc[0]: max_loc[0] + gds_png.shape[1]] = gds_png
+            composite_overlay = corrected_gds
+            #composite_overlay[max_loc[1]:max_loc[1] + gds_png.shape[0], max_loc[0]: max_loc[0] + gds_png.shape[1]] = gds_png
             blended = cv2.addWeighted(corrected_image, 1.0, composite_overlay, 0.5, 0)
+            cv2.imwrite(f'imaging/{name}_{layer}_blended.png', blended)
+            #cv2.imshow("Composite Overlay", composite_overlay)
+            #cv2.waitKey(0)
+            #cv2.destroyAllWindows()
+
+            corrected_image_rgb = cv2.cvtColor(corrected_image, cv2.COLOR_GRAY2BGR)
+            label_overlay = np.zeros(corrected_image_rgb.shape, np.uint8)
+            label_overlay = corrected_gds_label
+            #label_overlay[max_loc[1]:max_loc[1] + gds_label_image.shape[0], max_loc[0]: max_loc[0] + gds_label_image.shape[1], :] = gds_label_image
+            label_blended = cv2.addWeighted(corrected_image_rgb, 1.0, label_overlay, 0.3, 0)  
+            
+            cv2.imwrite(f'imaging/{name}_{layer}_aligned.png', label_blended)
+            
+            #cv2.imshow("Label_Blended", label_blended)
+            #cv2.waitKey(0)
+            #cv2.destroyAllWindows()
 
             with open(f'imaging/{args.tech}_cells.json', 'r') as f:
                 cell_names = json.load(f)
 
-            with open(f'imaging/{name}-{layer}_lib.json', 'r') as f:
+            with open(f'imaging/{name}_{layer}_lib.json', 'r') as f:
                 cells = json.load(f)
 
             # check alignment by drawing the rectangles
-            cell_overlay = np.zeros(corrected_image.shape, np.uint8)
+            cell_overlay = np.zeros(corrected_image_rgb.shape, np.uint8)
             max_x = 0
             max_y = 0
             entry = {}
@@ -218,7 +264,8 @@ if __name__ == "__main__":
                     cell_overlay,
                     [cell[0][0][0] + max_loc[0], cell[0][0][1] + max_loc[1]],
                     [cell[0][1][0] + max_loc[0], cell[0][1][1] + max_loc[1]],
-                    cell[1]
+                    cell[1],
+                    thickness=-1
                 )
                 # this is used to sanity check the statically coded dimensions of the x/y image crops
                 if abs(cell[0][0][0] - cell[0][1][0]) > max_x:
@@ -254,26 +301,41 @@ if __name__ == "__main__":
             print(f'max_x: {max_x}, max_y: {max_y}')
             for i in range(len(reduced_types())):
                 print(f"{reduced_types()[i]}: {entry['labels'].count(i)}")
-            with open(f'imaging/{name}-{layer}{psi}.pkl', 'wb') as f:
+            with open(f'imaging/{name}_{layer}{psi}.pkl', 'wb') as f:
                 pickle.dump(entry, f)
             meta = {
                 'num_cases_per_batch' : len(entry['data']),
                 'label_names' : reduced_types(),
                 'num_vis' : 64 * 32 * 3,
             }
-            with open(f'imaging/{name}-{layer}{psi}.meta', 'wb') as f:
+            with open(f'imaging/{name}_{layer}{psi}.meta', 'wb') as f:
                 pickle.dump(meta, f)
 
             # Quality check the alignment
-            blended_rect = cv2.addWeighted(corrected_image, 1.0, cell_overlay, 0.5, 0)
+            blended_rect = cv2.addWeighted(corrected_image_rgb, 1.0, cell_overlay, 1, 0)
+
+            #cv2.imshow("Corrected Image", corrected_image)
+            #cv2.waitKey(0)
+            #cv2.destroyAllWindows()
+
+            #cv2.imshow("Cell Overlay", cell_overlay)
+            #cv2.waitKey(0)
+            #cv2.destroyAllWindows()
 
             # Display the corrected image
             # cv2.imshow("Corrected Image", corrected_img2)
             # cv2.imshow("Reference image", img1)
-            cv2.imshow("Correlation", cv2.normalize(corr, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U))
-            cv2.imshow("Composite", blended)
-            cv2.imshow("Rectangles", blended_rect)
-            cv2.waitKey(0)
+            #cv2.imshow("Correlation", cv2.normalize(corr, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U))
+            #cv2.waitKey(0)
+            #cv2.destroyAllWindows()
+
+            #cv2.imshow("Blended", blended)
+            #cv2.waitKey(0)
+            #cv2.destroyAllWindows()
+
+            #cv2.imshow("Rectangles", blended_rect)
+            #cv2.waitKey(0)
+            #cv2.destroyAllWindows()
 
             # Now read in the JSON file with cell locations, and use this to create a training set of data
             # This consists of:
@@ -284,4 +346,3 @@ if __name__ == "__main__":
             #
             # The input to the classifier would be a source image area, that is the same as the fixed size used in training
             # The output of the classifier is a tensor of potential gate matches, which we will threshold into "most likely match"
-

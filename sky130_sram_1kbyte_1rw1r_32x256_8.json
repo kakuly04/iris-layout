@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "cells": {},
+  "name": "DEFAULT.DB",
+  "units": 1000000.0,
+  "die_area_ll": [
+    0.0,
+    0.0
+  ],
+  "die_area_ur": [
+    479.78,
+    397.5
+  ]
+}

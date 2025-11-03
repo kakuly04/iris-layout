@@ -55,19 +55,25 @@ def main():
     top_def = Design(args.def_file, PIX_PER_UM, args.redact)
     logging.info("creating hierarchy...")
     top_def.create_hierarchy()
+    #print(top_def.h.keys())
     logging.info("clustering hierarchy...")
     top_def.cluster_hierarchy()
+    #print(top_def.clusters)
     tm.set_func_count(top_def.total_func_regions)
 
     tm.gather_stats(top_def)
-    logging.info("generating image...")
 
+    logging.info("generating layer image...")
     # render the base case
     missing_cells = top_def.render_layer(tm)
+
     if len(missing_cells) > 0:
         # recurse through missing cells
+        print(missing_cells)
         top_def.generate_missing(missing_cells, tm)
+        print("END")
 
+    '''logging.info("generating function image...")
     missing_cells = top_def.render_function(tm)
     if len(missing_cells) > 0:
         top_def.generate_missing(missing_cells, tm, function=True)
@@ -75,7 +81,7 @@ def main():
     logging.info("generating legend...")
     top_def.generate_legend(tm)
 
-    # final output artifacts
+    # final output artifacts'''
     top_def.save_layout()
     tm.print_stats()
 

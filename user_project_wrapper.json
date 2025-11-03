@@ -1,0 +1,87 @@
+{
+  "version": "1.0.0",
+  "cells": {
+    "openram_1kB": {
+      "cell": "sky130_sram_1kbyte_1rw1r_32x256_8",
+      "loc": [
+        344.0,
+        475.5
+      ],
+      "orientation": "N"
+    },
+    "wb_bridge_2way": {
+      "cell": "wb_bridge_2way",
+      "loc": [
+        1550.0,
+        480.0
+      ],
+      "orientation": "N"
+    },
+    "wb_openram_wrapper": {
+      "cell": "wb_openram_wrapper",
+      "loc": [
+        1085.0,
+        480.0
+      ],
+      "orientation": "N"
+    },
+    "wrapped_etpu_3": {
+      "cell": "wrapped_etpu",
+      "loc": [
+        320.0,
+        2025.0
+      ],
+      "orientation": "N"
+    },
+    "wrapped_function_generator_0": {
+      "cell": "wrapped_function_generator",
+      "loc": [
+        350.0,
+        1200.0
+      ],
+      "orientation": "N"
+    },
+    "wrapped_ibnalhaytham_1": {
+      "cell": "wrapped_ibnalhaytham",
+      "loc": [
+        900.0,
+        1200.0
+      ],
+      "orientation": "N"
+    },
+    "wrapped_mbsFSK_5": {
+      "cell": "wrapped_mbsFSK",
+      "loc": [
+        2000.0,
+        480.0
+      ],
+      "orientation": "N"
+    },
+    "wrapped_silife_2": {
+      "cell": "wrapped_silife",
+      "loc": [
+        1700.0,
+        2000.0
+      ],
+      "orientation": "N"
+    },
+    "wrapped_snn_network_4": {
+      "cell": "wrapped_snn_network",
+      "loc": [
+        1900.0,
+        1200.0
+      ],
+      "orientation": "N"
+    }
+  },
+  "name": "user_project_wrapper",
+  "units": 1000.0,
+  "die_area_ll": [
+    0.0,
+    0.0
+  ],
+  "die_area_ur": [
+    2920.0,
+    3520.0
+  ]
+}

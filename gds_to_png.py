@@ -1,8 +1,9 @@
 import argparse
+import json
 import logging
 import importlib.util
 from progressbar.bar import ProgressBar
-import json
+
 
 import cv2
 import numpy as np
@@ -11,7 +12,7 @@ import gdspy
 from math import ceil
 
 # Measured effective zoom of the optical system
-PIX_PER_UM_10X = 3330 / 700
+PIX_PER_UM_10X = 3330 / 700 # 4.757142857 pixels per micron at 10X magnification
 PIX_PER_UM = PIX_PER_UM_10X
 
 # Effective measured trace/space from the GDS file. Used to
@@ -188,9 +189,48 @@ def export_lib(cell_list, interactive=False):
         cv2.imwrite(str(image_directory / (gds_file.stem + '_lib.png')), image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-
+    
+    cv2.imwrite(str(image_directory / (gds_file.stem + '_lib.png')), image)
     with open(str(image_directory / (gds_file.stem + '_lib.json')), 'w') as f:
         json.dump(export, f)
+
+def export_label(cell_list, interactive=False):
+    boxes = []
+    export = {}
+    for ref in cell_list.references:
+        color = tm.pallette.name_to_color_label(ref.ref_cell.name, map_orientation(ref.rotation, ref.x_reflection))
+        color_int = list(map(int, color))
+        if ref.get_bounding_box() is not None:
+            boxes += [(ref.get_bounding_box(), color_int, ref.ref_cell.name)]
+
+    min_x = min(polygon[0][:, 0].min() for polygon in boxes)
+    min_y = min(polygon[0][:, 1].min() for polygon in boxes)
+    max_x = max(polygon[0][:, 0].max() for polygon in boxes)
+    max_y = max(polygon[0][:, 1].max() for polygon in boxes)
+
+    block_width = ceil((max_x - min_x))
+    block_height = ceil((max_y - min_y))
+    image = np.full((ceil(block_height * PIX_PER_UM), ceil(block_width * PIX_PER_UM), 3), BG_COLOR, dtype=np.uint8)
+    offset = (int(round(min_x * PIX_PER_UM)), int(round(min_y * PIX_PER_UM)))
+    progress = ProgressBar(min_value = 0, max_value=len(boxes), prefix = f'Library mapping {gds_file.stem} ')
+    for (i, (rect, color, name)) in enumerate(boxes):
+        r = np.rint(rect * PIX_PER_UM).astype(int)
+        cv2.rectangle(image, r[0] - offset, r[1] - offset, color, thickness=-1, lineType=cv2.LINE_8)
+        progress.update(i)
+        # pixel offsets and colors
+        export[i] = ([(r[0] - offset).tolist(), (r[1] - offset).tolist()], color, name)
+    progress.finish()
+
+    if interactive:
+        cv2.imshow(f'{gds_file.stem} library', image)
+        cv2.imwrite(str(image_directory / (gds_file.stem + '_lib.png')), image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    
+    cv2.imwrite(str(image_directory / (gds_file.stem + '_label.png')), image)
+    with open(str(image_directory / (gds_file.stem + '_label.json')), 'w') as f:
+        json.dump(export, f)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="IRIS GDS to pixels helper")
@@ -239,10 +279,14 @@ if __name__ == '__main__':
         # Catch it if it's not the case, so I can find the test case and understand what it even means to have two top cells.
         assert len(cells) == 1
 
-        if True:
+        '''if True:
             # Export the GDS as PNG files
             export_png(cells[0], interactive=args.interactive)
 
         if True:
             # Export the GDS as abstract library tiles
-            export_lib(cells[0], interactive=args.interactive)
+            export_lib(cells[0], interactive=args.interactive)'''
+        
+        if True:
+            # Export the GDS as label map
+            export_label(cells[0], interactive=args.interactive)

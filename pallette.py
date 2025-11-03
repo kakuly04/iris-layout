@@ -8,6 +8,7 @@ class HashPallette():
     def __init__(self, tech):
         self.tech = tech
         self.lut = {} # this stores RGB values
+        self.label_lut = {} # this stores label colors
         self.hue_ranges = tech.hue_ranges()
         self.sat_ranges = tech.sat_ranges()
         self.next_color = {}
@@ -18,6 +19,13 @@ class HashPallette():
                     self.next_color[family][name] = [range[0], srange[1], 255]
                 else: # desaturate fill and other
                     self.next_color[family][name] = [range[0], 32, 32]
+        
+        self.label_color = {
+            'ff': [0, 255, 255],
+            'logic': [60, 255, 255],
+            'fill': [120, 255, 255],
+            'other': [170, 255, 255]
+        }
 
         self.function_lut = {} # this stores HSV values for $reasons
         self.function_cur_hsv = (0, 255, 192)
@@ -27,6 +35,40 @@ class HashPallette():
     # Map standard cells to colors.
     # Names are mapped into H/S space of HSV
     # Orientations are mapped into V-space
+
+    def name_to_color_label(self, name, orientation):
+        if name in self.label_lut:
+            return self.label_lut[name]
+        else:
+            label_name = self.tech.map_name_to_label(name)
+            hsv_color = self.label_color[label_name]
+
+            # modulate the v based on the orientation
+            if False:
+                if orientation == 'N':
+                    v = 255
+                elif orientation == 'S':
+                    v = 255 - 16
+                elif orientation == 'W':
+                    v = 255 - 32
+                elif orientation == 'E':
+                    v = 255 - 48
+                elif orientation == 'FN':
+                    v = 255 - 64
+                elif orientation == 'FS':
+                    v = 255 - 80
+                elif orientation == 'FW':
+                    v = 255 - 96
+                elif orientation == 'FE':
+                    v = 255 - 128
+                else:
+                    logging.error(f"unknown orientation: {orientation}")
+                    assert False # cause a crash
+
+            rgb_color = cv2.cvtColor(np.array([[hsv_color]], dtype=np.uint8), cv2.COLOR_HSV2RGB)[0][0]
+            self.label_lut[name] = (float(rgb_color[0]), float(rgb_color[1]), float(rgb_color[2]))
+            return self.label_lut[name]
+
     def str_to_rgb(self, name, orientation):
         if name in self.lut:
             return self.lut[name]

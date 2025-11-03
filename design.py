@@ -1,16 +1,16 @@
-import logging
 import json
+import string
+import struct
+from pathlib import Path
 import cv2
 import numpy as np
-import struct
+import logging
 import io
-import string
+
 import random
 from math import pi, sqrt, ceil
 
 from progressbar.bar import ProgressBar
-from pathlib import Path
-
 from prims import Rect, Point
 
 # GDS parser based off of https://github.com/mikaeloduh/gds2ascii-tool-project
@@ -482,6 +482,10 @@ class Design():
                     )
         if do_progress:
             progress.finish()
+
+        '''cv2.imshow('trial', self.canvas)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()'''
         return missing_cells
 
     def render_function_cluster(self, tech, name, data):
@@ -664,10 +668,11 @@ class Design():
         warned_cell = {}
         for missing_cell in missing_cells:
             def_file = self.design_path / (missing_cell['cell'] + '.def')
+            #print(def_file)
             if def_file.exists(): # prefer DEF over GDS
                 d = Design(def_file, self.pix_per_um)
             else:
-                gds_file = self.design_path / (missing_cell['cell'] + '.gds')
+                gds_file = Path(f"{missing_cell['cell']}.gds")
                 if gds_file.exists():
                     d = Design(gds_file, self.pix_per_um)
                 else:

@@ -35,6 +35,16 @@ class Tech(TechBase):
             'hdll' : [60, 87],
             'other' : [32, 59],
         }
+
+        '''{'hs' : 'high speed',
+        'ms' : 'medium speed',
+        'hd' : 'high density',
+        'ls' : 'low speed',
+        'lp' : 'low power',
+        'hvl' : 'high voltage low speed',
+        'hdll' : 'high density low leakage',
+        'other' : 'other'}'''
+
         super().__init__(args)
 
     def is_ff(self, cell_name):
@@ -42,6 +52,46 @@ class Tech(TechBase):
             return 1
         else:
             return 0
+        
+    def map_name_to_label(self, cell_name):
+        cell_name = cell_name.lower()
+        cell_match = re.search('__(.*)', cell_name)
+        if cell_match is None:
+            return 'other'
+        nm = cell_match.group(1)
+
+        if nm.startswith('xor') or nm.startswith('xnor'):
+            return 'logic'
+        elif nm.startswith('sed') or nm.startswith('sd') or nm.startswith('df') or nm.startswith('edf'):
+            return 'ff'
+        elif nm.startswith('dly'):
+            return 'logic'
+        elif nm.startswith('dl'): # this must be after 'dly'
+            return 'ff'
+        elif nm.startswith('or') or nm.startswith('nor'):
+            return 'logic'
+        elif nm.startswith('and') or nm.startswith('nand'):
+            return 'logic'
+        elif nm.startswith('mux'):
+            return 'logic'
+        elif nm.startswith('inv') or nm.startswith('einv'):
+            return 'logic'
+        elif nm.startswith('buf') or nm.startswith('ebuf'):
+            return 'logic'
+        elif nm.startswith('fa'):
+            return 'logic'
+        elif nm.startswith('mux'):
+            return 'logic'
+        elif nm.startswith('clk'):
+            return 'logic'
+        elif nm.startswith('a'): # this is last in the if/else chain so more specific patterns evaluate first
+            return 'logic'
+        elif nm.startswith('o'): # this is last in the if/else chain so more specific patterns evaluate first
+            return 'logic'
+        elif nm.startswith('decap'):
+            return 'fill'
+        else:
+            return 'other'
 
     def map_name_to_celltype(self, cell_name):
         cell_name = cell_name.lower()
