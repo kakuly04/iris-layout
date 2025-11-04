@@ -160,6 +160,7 @@ def export_png(cells, interactive=False):
 def export_lib(cell_list, interactive=False):
     boxes = []
     export = {}
+    export_relative = {}
     for ref in cell_list.references:
         color = tm.pallette.str_to_rgb(ref.ref_cell.name, map_orientation(ref.rotation, ref.x_reflection))
         color_int = list(map(int, color))
@@ -182,6 +183,7 @@ def export_lib(cell_list, interactive=False):
         progress.update(i)
         # pixel offsets and colors
         export[i] = ([(r[0] - offset).tolist(), (r[1] - offset).tolist()], color, name)
+        export_relative[i] = ([((r[0][0] - offset[0])/(ceil(block_width * PIX_PER_UM)), (r[0][1] - offset[1])/(ceil(block_height * PIX_PER_UM))), ((r[1][0] - offset[0])/(ceil(block_width * PIX_PER_UM)), (r[1][1] - offset[1])/(ceil(block_height * PIX_PER_UM)))], color, name)
     progress.finish()
 
     if interactive:
@@ -193,6 +195,11 @@ def export_lib(cell_list, interactive=False):
     cv2.imwrite(str(image_directory / (gds_file.stem + '_lib.png')), image)
     with open(str(image_directory / (gds_file.stem + '_lib.json')), 'w') as f:
         json.dump(export, f)
+
+    with open(str(image_directory / (gds_file.stem + 'relative_lib.json')), 'w') as f:
+        json.dump(export_relative, f)
+
+
 
 def export_label(cell_list, interactive=False):
     boxes = []
